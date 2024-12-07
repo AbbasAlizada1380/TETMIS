@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start-frontend": " npm run dev",
+    "start-backend": "cd.. && cd Backend && npm start",
+    "start": "concurrently \"npm run start-frontend\" \"npm run start-backend\""
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
@@ -29,6 +32,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
     "eslint": "^9.13.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.0.0",
