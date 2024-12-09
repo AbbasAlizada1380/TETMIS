@@ -18,9 +18,9 @@ Incomes.init({
     }
 }, {
     sequelize,
-    modelName: 'Expense',
-    tableName: 'Expense',
+    modelName: 'Incomes',
+    tableName: 'Incomes',
     timestamps: true, // Adds createdAt and updatedAt
 });
 
-export default Expense;
+export default Incomes;

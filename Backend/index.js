@@ -5,6 +5,7 @@ import mysql from 'mysql2/promise'
 import cors from 'cors'
 import massageRouter from './routes/massageRoute.js';
 import expenseRouter from './routes/expenseRout.js';
+import IncomesRouter from './routes/IncomesRoute.js';
 
 const app = express();
 const PORT = process.env.PORT || 9000;
@@ -30,6 +31,7 @@ sequelize.sync({ alter: true }) // `alter: true` updates table structure in deve
 app.use('/member', memberRoute); // Base route for members
 app.use('/message',massageRouter)
 app.use('/expense',expenseRouter)
+app.use('/income',IncomesRouter)
 
 
 
