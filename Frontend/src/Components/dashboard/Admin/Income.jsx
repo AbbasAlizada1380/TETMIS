@@ -3,7 +3,7 @@ import axios from "axios";
 
 const IncomeManager = () => {
   const [incomes, setIncomes] = useState([]);
-  const [formData, setFormData] = useState({ source: "", amount: "", date: "" });
+  const [formData, setFormData] = useState({ source: "", amount: "", takingDate: "" });
   const [editingIncome, setEditingIncome] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,7 +40,7 @@ const IncomeManager = () => {
       setLoading(true);
       const response = await axios.post(apiUrl, formData);
       setIncomes([...incomes, response.data]);
-      setFormData({ source: "", amount: "", date: "" });
+      setFormData({ source: "", amount: "", takingDate: "" });
       setLoading(false);
     } catch (err) {
       setError("Error adding income");
@@ -125,9 +125,9 @@ const IncomeManager = () => {
         />
         <input
           type="date"
-          name="date"
+          name="takingDate"
           className="border p-2 rounded mb-2 w-full"
-          value={formData.date}
+          value={formData.takingDate}
           onChange={handleInputChange}
         />
         {editingIncome ? (
@@ -162,8 +162,8 @@ const IncomeManager = () => {
             <tr key={income.id}>
               <td className="border border-gray-300 p-2">{income.source}</td>
               <td className="border border-gray-300 p-2">{income.amount}</td>
-              <td className="border border-gray-300 p-2">{income.date}</td>
-              <td className="border border-gray-300 p-2">
+              <td className="border border-gray-300 p-2">{income.takingDate}</td>
+              <td className="border border-gray-300 p-2 flex justify-center items-center">
                 <button
                   onClick={() => editIncome(income)}
                   className="bg-yellow-500 text-white p-1 rounded mr-2"
