@@ -80,6 +80,7 @@ export const updateMember = async (req, res) => {
     const { fullName, email,position,role, password, entryDate, exitDate, skills, contacts } = req.body;
     const hashedPassword = await bcrypt.hash(password,10)
     const member = await Member.findByPk(id);
+console.log(req.body);
 
     if (member) {
       await member.update({

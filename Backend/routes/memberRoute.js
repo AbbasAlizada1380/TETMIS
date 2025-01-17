@@ -6,7 +6,7 @@ const memberRoute = express.Router();
 memberRoute.post('/', createMember);
 memberRoute.get('/', getAllMembers);
 memberRoute.get('/:id', getMemberById);
-memberRoute.post('/update/:id', updateMember);
+memberRoute.put('/update/:id', updateMember);
 memberRoute.delete('/:id', deleteMember);
 memberRoute.post('/login', loginUser);
 

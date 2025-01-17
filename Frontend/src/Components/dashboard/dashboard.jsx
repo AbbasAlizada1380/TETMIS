@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { GiMoneyStack } from "react-icons/gi";
 import { jwtDecode } from "jwt-decode";
-import axios from "axios";
 import IncomeManager from "./Admin/Income.jsx";
 
 import {
@@ -19,91 +18,131 @@ import VerifiedMessages from "./Admin/verifiedMessages";
 import ExpenseManager from "./Admin/expense.jsx";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
+  // Fetch and decode token
   const token = localStorage.getItem("token");
-
-  // Ensure token exists before decoding
-  let decodedToken = null;
-  if (token) {
-    try {
-      decodedToken = jwtDecode(token);
-      localStorage.setItem("user", JSON.stringify(decodedToken)); // Store user data in localStorage
-    } catch (error) {
-      console.error("Failed to decode token:", error);
-    }
-  }
-
-  const User = localStorage.getItem("user");
-  const user = User ? JSON.parse(User) : null; // Access the passed decodedToken correctly
-
-  const [formData, setFormData] = useState({
-    email: user?.email || "",
-    password: "*******",
-    repassword: "********",
-    profile: user?.profile || "",
-    fullName: user?.fullName || "",
-  });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
+  const [user, setUser] = useState(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userImage, setUserImage] = useState(null);
+
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        setUser(decodedToken);
+        localStorage.setItem("user", JSON.stringify(decodedToken));
+      } catch (error) {
+        console.error("Invalid token, logging out.", error);
+        handleLogout();
+      }
+    }
+  }, [token]);
+
+  // Redirect to login if no user
+  useEffect(() => {
+    if (!user) {
+      // navigate("/login");
+    }
+  }, [user, navigate]);
+
+  // States
+  const [formData, setFormData] = useState({
+    email: user?.email || "guest",
+    fullName: user?.fullName || "",
+    password: "",
+    repassword: "",
+    profile: null,
+    role: user?.role || "",
+    entryDate: user?.entryDate || "",
+    skills: user?.skills || "",
+    contacts: user?.contacts || "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(
     JSON.parse(localStorage.getItem("darkMode")) || false
   );
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activeComponent, setActiveComponent] = useState("home");
 
-  const navigate = useNavigate();
+  // Handle input changes
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
 
+  // Handle profile update
   const handleUpdate = async (e) => {
     e.preventDefault();
+
+    if (formData.password !== formData.repassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    const formDataToSend = new FormData();
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value) {
+        formDataToSend.append(key, value);
+      }
+    });
+
     try {
-      const response = await axios.post(
-        `http://localhost:9000/member/update/${user?.id}`,
-        formData
+      const response = await fetch(
+        `http://localhost:8000/users/update/${user?.id}/`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formDataToSend,
+        }
       );
-      console.log("Update successful:");
-      setProfileOpen(false);
-    } catch (error) {
-      console.error("Error during update:", error);
-      alert("There was an error updating the profile.");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || "Error updating profile.");
+        return;
+      }
+
+      const updatedData = await response.json();
+      console.log("Update successful:", updatedData);
+    } catch (err) {
+      setError("An error occurred while updating the profile.");
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Handle dark mode toggle
   const handleDarkModeToggle = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     localStorage.setItem("darkMode", JSON.stringify(newDarkMode));
   };
 
+  // Handle sidebar toggle
   const handleMobileSidebarToggle = () =>
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
 
+  // Handle logout
   const handleLogout = () => {
-    navigate("/");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    navigate("/login");
   };
 
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-    }
-    const fetchUserProfile = async () => {
-      try {
-        // Placeholder for user image fetching logic
-      } catch (error) {
-        console.error("Error fetching user image:", error);
-      }
-    };
-
-    fetchUserProfile();
-  }, [navigate, token]);
-
+  // Render active component
   const renderContent = () => {
     switch (activeComponent) {
       case "memberManagement":
@@ -114,7 +153,6 @@ const Dashboard = () => {
         return <ExpenseManager />;
       case "messages":
         return <VerifiedMessages />;
-
       default:
         return <ExpenseManager />;
     }
@@ -279,118 +317,189 @@ const Dashboard = () => {
 
       {/* Profile Update Modal */}
       {profileOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <form
-            onReset={() => setProfileOpen(false)}
-            onSubmit={handleUpdate}
-            className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
-          >
-            <h2 className="text-xl font-bold mb-4">Update Profile</h2>
-            <div className="mb-4">
-              <label
-                htmlFor="email"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="fullName"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                Full Name
-              </label>
-              <input
-                type="fullName"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Enter your Full Name"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="password"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                password
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="repassword"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                re-enter password
-              </label>
-              <input
-                type="password"
-                id="repassword"
-                name="repassword"
-                value={formData.repassword}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="re-enter your password"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="profile"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                profile picture
-              </label>
-              <input
-                type="file"
-                id="profile"
-                name="profile"
-                value={formData.profile}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="uplaod image "
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              >
-                Update
-              </button>
-              <button
-                type="reset"
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+        <div className="fixed inset-0 overflow-x-scroll flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className=" p-6 bg-white rounded shadow-lg">
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <h2 className="text-xl font-bold text-center">Update Profile</h2>
+              {error && <p className="text-red-500">{error}</p>}
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-bold text-gray-700"
+                  >
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="fullName"
+                    className="block text-sm font-bold text-gray-700"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                    placeholder="Enter your Full Name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-bold text-gray-700"
+                  >
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="repassword"
+                    className="block text-sm font-bold text-gray-700"
+                  >
+                    Re-enter Password
+                  </label>
+                  <input
+                    type="password"
+                    id="repassword"
+                    name="repassword"
+                    value={formData.repassword}
+                    onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                    placeholder="Re-enter your password"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="role"
+                      className="block text-sm font-bold text-gray-700"
+                    >
+                      Role
+                    </label>
+                    <input
+                      type="text"
+                      id="role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleInputChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                      placeholder="Enter role"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="entryDate"
+                      className="block text-sm font-bold text-gray-700"
+                    >
+                      Entry Date
+                    </label>
+                    <input
+                      type="date"
+                      id="entryDate"
+                      name="entryDate"
+                      value={formData.entryDate}
+                      onChange={handleInputChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="skills"
+                      className="block text-sm font-bold text-gray-700"
+                    >
+                      Skills
+                    </label>
+                    <input
+                      type="text"
+                      id="skills"
+                      name="skills"
+                      value={formData.skills}
+                      onChange={handleInputChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                      placeholder="Enter skills"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="contacts"
+                      className="block text-sm font-bold text-gray-700"
+                    >
+                      Contacts
+                    </label>
+                    <input
+                      type="text"
+                      id="contacts"
+                      name="contacts"
+                      value={formData.contacts}
+                      onChange={handleInputChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                      placeholder="Enter contacts"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile"
+                    className="block text-sm font-bold text-gray-700"
+                  >
+                    Profile Picture
+                  </label>
+                  <input
+                    type="file"
+                    id="profile"
+                    name="profile"
+                    onChange={handleInputChange}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="submit"
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    disabled={loading}
+                  >
+                    {loading ? "Updating..." : "Update"}
+                  </button>
+                  <button
+                    type="button"
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
