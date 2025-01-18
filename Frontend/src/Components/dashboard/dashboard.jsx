@@ -22,7 +22,7 @@ const Dashboard = () => {
 
   // Fetch and decode token
   const token = localStorage.getItem("token");
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [userImage, setUserImage] = useState(null);
 
@@ -32,8 +32,10 @@ const Dashboard = () => {
     if (token) {
       try {
         const decodedToken = jwtDecode(token);
-        setUser(decodedToken);
-        localStorage.setItem("user", JSON.stringify(decodedToken));
+        setUser(JSON.stringify(decodedToken));
+        // localStorage.setItem("name", JSON.stringify(decodedToken.fullName));
+        console.log(decodedToken);
+        
       } catch (error) {
         console.error("Invalid token, logging out.", error);
         handleLogout();
@@ -42,24 +44,36 @@ const Dashboard = () => {
   }, [token]);
 
   // Redirect to login if no user
-  useEffect(() => {
-    if (!user) {
-      // navigate("/login");
-    }
-  }, [user, navigate]);
-
-  // States
-  const [formData, setFormData] = useState({
-    email: user?.email || "guest",
-    fullName: user?.fullName || "",
-    password: "",
-    repassword: "",
-    profile: null,
-    role: user?.role || "",
-    entryDate: user?.entryDate || "",
-    skills: user?.skills || "",
-    contacts: user?.contacts || "",
+  const [formData, setFormData] = useState(() => {
+    // Use a function to initialize state to handle user being null initially
+    return {
+      email: user?.email || "guest",       // Default to "guest" if no email
+      fullName: user?.fullName || "",      // Default to empty string
+      password: "",                        // Empty string for new password
+      repassword: "",                      // Empty string for confirmation password
+      profile: null,                       // Null for profile picture initially
+      role: user?.role || "",              // Default to empty string if no role
+      entryDate: user?.entryDate || "",    // Default to empty string for entry date
+      skills: user?.skills || "",          // Default to empty string for skills
+      contacts: user?.contacts || "",      // Default to empty string for contacts
+    };
   });
+  
+  // Update formData dynamically if the user state changes
+  useEffect(() => {
+    if (user) {
+      setFormData((prevData) => ({
+        ...prevData,
+        email: user.email || "guest",
+        fullName: user.fullName || "",
+        role: user.role || "",
+        entryDate: user.entryDate || "",
+        skills: user.skills || "",
+        contacts: user.contacts || "",
+      }));
+    }
+  }, [user]);
+  
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -285,7 +299,8 @@ const Dashboard = () => {
         {/* Navbar */}
         <nav className="flex justify-between items-center p-4 shadow-md bg-white">
           <h1 className="text-xl font-bold">
-            welcome dear <u>{formData.fullName}</u>!
+           
+            wellcome dear <u>{localStorage.getItem("name")}</u>!
           </h1>
           <div className="flex items-center space-x-4">
             <button
